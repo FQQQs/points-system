@@ -17,22 +17,25 @@ require_once 'includes/layout.php';
 /**
  * Map AI level to Bootstrap badge CSS class (same scheme as index.php list page).
  */
-function aiLevelBadgeClass(string $level): string
-{
-    $map = [
-        'L0' => 'badge-ai-l0',
-        'L1' => 'badge-ai-l1',
-        'L2' => 'badge-ai-l2',
-        'L3' => 'badge-ai-l3',
-        'L4' => 'badge-ai-l4',
-    ];
-    return $map[$level] ?? 'badge-ai-l0';
+if (!function_exists('aiLevelBadgeClass')) {
+    function aiLevelBadgeClass(string $level): string
+    {
+        $map = [
+            'L0' => 'badge-ai-l0',
+            'L1' => 'badge-ai-l1',
+            'L2' => 'badge-ai-l2',
+            'L3' => 'badge-ai-l3',
+            'L4' => 'badge-ai-l4',
+        ];
+        return $map[$level] ?? 'badge-ai-l0';
+    }
 }
 
 /**
  * Render an error page when the employee ID is invalid or not found.
  */
-function renderError(string $title, string $message): void
+if (!function_exists('renderError')) {
+    function renderError(string $title, string $message): void
 {
     ob_start();
     ?>
@@ -45,6 +48,7 @@ function renderError(string $title, string $message): void
     $content = ob_get_clean();
     renderLayout('员工详情', 'employees', $content);
 }
+} // end if (!function_exists('renderError'))
 
 // ---------------------------------------------------------------------------
 // Route & Validation
