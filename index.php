@@ -2,7 +2,8 @@
 /**
  * 苍井寿司 AI 积分管理系统 — 员工列表页
  * 
- * 功能：部门筛选、分页列表、添加员工（模态框+POST处理）、编辑员工（模态框）、删除员工（确认弹窗）
+ * 功能：部门筛选、分页列表、添加员工（模态框+POST处理）、编辑员工（模态框）、
+ *       删除员工（确认弹窗）、Excel批量导入导出
  */
 
 require_once 'includes/db.php';
@@ -25,7 +26,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'add') {
         $name         = trim($_POST['name'] ?? '');
         $departmentId = $_POST['department_id'] ?? '';
-        $joinDate     = trim($_POST['join_date'] ?? '');
+        $phone        = trim($_POST['phone'] ?? '');
+        $email        = trim($_POST['email'] ?? '');
         $aiLevel      = trim($_POST['ai_level'] ?? 'L0');
 
         // Validate: name
@@ -49,18 +51,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        // Validate: join_date
-        if ($error === null) {
-            if ($joinDate === '') {
-                $error = '请选择入职日期';
-            } else {
-                $dateObj = DateTime::createFromFormat('Y-m-d', $joinDate);
-                if (!$dateObj || $dateObj->format('Y-m-d') !== $joinDate) {
-                    $error = '入职日期格式不正确（YYYY-MM-DD）';
-                }
-            }
-        }
-
         // Validate: ai_level
         if ($error === null) {
             $validLevels = ['L0', 'L1', 'L2', 'L3', 'L4'];
@@ -72,13 +62,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Insert if no errors
         if ($error === null) {
             $stmt = $db->prepare(
-                'INSERT INTO employees (name, department_id, join_date, ai_level)
-                 VALUES (:name, :department_id, :join_date, :ai_level)'
+                'INSERT INTO employees (name, department_id, phone, email, ai_level)
+                 VALUES (:name, :department_id, :phone, :email, :ai_level)'
             );
             $stmt->execute([
                 ':name'          => $name,
                 ':department_id' => $departmentId,
-                ':join_date'     => $joinDate,
+                ':phone'         => $phone,
+                ':email'         => $email,
                 ':ai_level'      => $aiLevel,
             ]);
 
@@ -92,7 +83,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $employeeId   = $_POST['employee_id'] ?? '';
         $name         = trim($_POST['name'] ?? '');
         $departmentId = $_POST['department_id'] ?? '';
-        $joinDate     = trim($_POST['join_date'] ?? '');
+        $phone        = trim($_POST['phone'] ?? '');
+        $email        = trim($_POST['email'] ?? '');
         $aiLevel      = trim($_POST['ai_level'] ?? 'L0');
 
         // Validate: employee_id
@@ -136,20 +128,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        // Validate: join_date
-        if ($error === null) {
-            if ($joinDate === '') {
-                $error = '请选择入职日期';
-                $editErrorId = $employeeId;
-            } else {
-                $dateObj = DateTime::createFromFormat('Y-m-d', $joinDate);
-                if (!$dateObj || $dateObj->format('Y-m-d') !== $joinDate) {
-                    $error = '入职日期格式不正确（YYYY-MM-DD）';
-                    $editErrorId = $employeeId;
-                }
-            }
-        }
-
         // Validate: ai_level
         if ($error === null) {
             $validLevels = ['L0', 'L1', 'L2', 'L3', 'L4'];
@@ -162,14 +140,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($error === null) {
             $stmt = $db->prepare(
                 'UPDATE employees
-                 SET name = :name, department_id = :department_id, join_date = :join_date,
-                     ai_level = :ai_level, updated_at = datetime(\'now\',\'localtime\')
+                 SET name = :name, department_id = :department_id, phone = :phone,
+                     email = :email, ai_level = :ai_level,
+                     updated_at = datetime(\'now\',\'localtime\')
                  WHERE id = :id'
             );
             $stmt->execute([
                 ':name'          => $name,
                 ':department_id' => $departmentId,
-                ':join_date'     => $joinDate,
+                ':phone'         => $phone,
+                ':email'         => $email,
                 ':ai_level'      => $aiLevel,
                 ':id'            => $employeeId,
             ]);
@@ -216,9 +196,19 @@ if (isset($_GET['updated']) && $_GET['updated'] == '1') {
 if (isset($_GET['deleted']) && $_GET['deleted'] == '1') {
     $success = '员工已删除';
 }
+if (isset($_GET['imported'])) {
+    $n = intval($_GET['imported']);
+    $success = "导入完成：成功导入 {$n} 名员工";
+}
 if (isset($_GET['error'])) {
     if ($_GET['error'] === 'notfound') {
         $warning = '员工不存在，可能已被删除';
+    } elseif ($_GET['error'] === 'upload') {
+        $warning = '文件上传失败，请重试';
+    } elseif ($_GET['error'] === 'empty') {
+        $warning = 'Excel 文件为空或格式不正确';
+    } elseif ($_GET['error'] === 'import') {
+        $warning = '导入失败：' . ($_GET['msg'] ?? '未知错误');
     }
 }
 
@@ -256,7 +246,7 @@ if ($currentPage > $totalPages) {
 
 // Fetch employees
 $empSql = 'SELECT e.id, e.name, e.department_id, d.name AS department_name,
-                  e.join_date, e.ai_level
+                  e.phone, e.email, e.ai_level, e.status
            FROM employees e
            JOIN departments d ON e.department_id = d.id';
 $empParams = [];
@@ -370,9 +360,12 @@ ob_start();
             <?php endforeach; ?>
         </select>
     </div>
-    <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#addEmployeeModal">
-        添加员工
-    </button>
+    <div class="btn-group">
+        <a href="includes/excel_handler.php?action=template_employee" class="btn btn-outline-secondary btn-sm">下载模板</a>
+        <button type="button" class="btn btn-outline-info btn-sm" data-toggle="modal" data-target="#importEmployeeModal">导入Excel</button>
+        <a href="includes/excel_handler.php?action=export_employees&department=<?php echo $filterDept; ?>" class="btn btn-outline-success btn-sm">导出Excel</a>
+        <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#addEmployeeModal">添加员工</button>
+    </div>
 </div>
 
 <!-- Employee Table -->
@@ -383,15 +376,16 @@ ob_start();
                 <th>#</th>
                 <th>姓名</th>
                 <th>部门</th>
-                <th>入职日期</th>
+                <th>手机号</th>
                 <th>AI等级</th>
+                <th>状态</th>
                 <th>操作</th>
             </tr>
         </thead>
         <tbody>
             <?php if (empty($employees)): ?>
                 <tr>
-                    <td colspan="6">
+                    <td colspan="7">
                         <div class="empty-state">
                             <p>暂无员工数据</p>
                         </div>
@@ -407,10 +401,15 @@ ob_start();
                         </a>
                     </td>
                     <td><?php echo htmlspecialchars($emp['department_name'], ENT_QUOTES, 'UTF-8'); ?></td>
-                    <td><?php echo htmlspecialchars($emp['join_date'], ENT_QUOTES, 'UTF-8'); ?></td>
+                    <td><?php echo htmlspecialchars($emp['phone'], ENT_QUOTES, 'UTF-8'); ?></td>
                     <td>
                         <span class="badge <?php echo aiLevelBadgeClass($emp['ai_level']); ?>">
                             <?php echo htmlspecialchars($emp['ai_level'], ENT_QUOTES, 'UTF-8'); ?>
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge <?php echo $emp['status'] === '在职' ? 'badge-success' : 'badge-secondary'; ?>">
+                            <?php echo htmlspecialchars($emp['status'], ENT_QUOTES, 'UTF-8'); ?>
                         </span>
                     </td>
                     <td>
@@ -421,7 +420,8 @@ ob_start();
                                 data-id="<?php echo $emp['id']; ?>"
                                 data-name="<?php echo htmlspecialchars($emp['name'], ENT_QUOTES, 'UTF-8'); ?>"
                                 data-dept="<?php echo $emp['department_id']; ?>"
-                                data-date="<?php echo htmlspecialchars($emp['join_date'], ENT_QUOTES, 'UTF-8'); ?>"
+                                data-phone="<?php echo htmlspecialchars($emp['phone'], ENT_QUOTES, 'UTF-8'); ?>"
+                                data-email="<?php echo htmlspecialchars($emp['email'], ENT_QUOTES, 'UTF-8'); ?>"
                                 data-level="<?php echo htmlspecialchars($emp['ai_level'], ENT_QUOTES, 'UTF-8'); ?>">
                             编辑
                         </button>
@@ -540,9 +540,17 @@ ob_start();
                     </div>
 
                     <div class="form-group">
-                        <label for="empJoinDate">入职日期 <span class="text-danger">*</span></label>
-                        <input type="date" name="join_date" id="empJoinDate" class="form-control" required
-                               value="<?php echo isset($_POST['join_date']) ? htmlspecialchars($_POST['join_date'], ENT_QUOTES, 'UTF-8') : ''; ?>">
+                        <label for="empPhone">手机号</label>
+                        <input type="text" name="phone" id="empPhone" class="form-control"
+                               maxlength="20" placeholder="请输入手机号"
+                               value="<?php echo isset($_POST['phone']) ? htmlspecialchars($_POST['phone'], ENT_QUOTES, 'UTF-8') : ''; ?>">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="empEmail">邮箱</label>
+                        <input type="email" name="email" id="empEmail" class="form-control"
+                               maxlength="100" placeholder="请输入邮箱"
+                               value="<?php echo isset($_POST['email']) ? htmlspecialchars($_POST['email'], ENT_QUOTES, 'UTF-8') : ''; ?>">
                     </div>
 
                     <div class="form-group">
@@ -606,8 +614,15 @@ ob_start();
                     </div>
 
                     <div class="form-group">
-                        <label for="edit_join_date">入职日期 <span class="text-danger">*</span></label>
-                        <input type="date" name="join_date" id="edit_join_date" class="form-control" required>
+                        <label for="edit_phone">手机号</label>
+                        <input type="text" name="phone" id="edit_phone" class="form-control"
+                               maxlength="20" placeholder="请输入手机号">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="edit_email">邮箱</label>
+                        <input type="email" name="email" id="edit_email" class="form-control"
+                               maxlength="100" placeholder="请输入邮箱">
                     </div>
 
                     <div class="form-group">
@@ -622,6 +637,37 @@ ob_start();
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
                     <button type="submit" class="btn btn-primary">保存修改</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ========================
+     Import Employee Modal
+     ======================== -->
+<div class="modal fade" id="importEmployeeModal" tabindex="-1" role="dialog" aria-labelledby="importEmployeeModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <form method="POST" action="includes/excel_handler.php" enctype="multipart/form-data">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="importEmployeeModalLabel">批量导入员工</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="action" value="import_employees">
+                    <p class="text-muted mb-2"><small>请先下载模板，按模板格式填写后上传。部门列填写部门名称即可自动匹配。</small></p>
+                    <a href="includes/excel_handler.php?action=template_employee" class="btn btn-sm btn-outline-secondary mb-3">下载员工导入模板</a>
+                    <div class="form-group">
+                        <label for="importFile">选择Excel文件 (.xlsx)</label>
+                        <input type="file" name="file" id="importFile" class="form-control-file" accept=".xlsx,.xls" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">导入</button>
                 </div>
             </form>
         </div>
@@ -650,7 +696,8 @@ $('#editEmployeeModal').on('show.bs.modal', function (event) {
     $('#edit_employee_id').val(button.data('id'));
     $('#edit_name').val(button.data('name'));
     $('#edit_department_id').val(button.data('dept'));
-    $('#edit_join_date').val(button.data('date'));
+    $('#edit_phone').val(button.data('phone'));
+    $('#edit_email').val(button.data('email'));
     $('#edit_ai_level').val(button.data('level'));
 });
 

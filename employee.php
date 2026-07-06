@@ -3,7 +3,7 @@
  * 苍井寿司 AI 积分管理系统 — 员工详情页
  * 
  * 路由：employee.php?id={id}
- * 功能：显示员工基本信息（姓名、部门、入职日期、AI等级、录入时间、最后更新）
+ * 功能：显示员工基本信息（姓名、部门、手机号、邮箱、AI等级、状态、录入时间、最后更新）
  *        + 4个积分占位面板（调查/培训/考核/成就）
  */
 
@@ -83,10 +83,53 @@ if (!$employee) {
 
 $name           = $employee['name'];
 $departmentName = $employee['department_name'];
-$joinDate       = $employee['join_date'];
+$phone          = $employee['phone'] ?? '';
+$email          = $employee['email'] ?? '';
 $aiLevel        = $employee['ai_level'];
+$status         = $employee['status'] ?? '在职';
 $createdAt      = $employee['created_at'];
 $updatedAt      = $employee['updated_at'];
+
+// ---------------------------------------------------------------------------
+// Query Real Points Data (Phase 2)
+// ---------------------------------------------------------------------------
+
+// Points breakdown by type
+$pointSummary = $db->prepare(
+    "SELECT type, SUM(points) AS total
+     FROM points_log
+     WHERE employee_id = :id
+     GROUP BY type"
+);
+$pointSummary->execute([':id' => $id]);
+$pointsByType = [];
+while ($row = $pointSummary->fetch()) {
+    $pointsByType[$row['type']] = floatval($row['total']);
+}
+
+$surveyPts     = $pointsByType['survey'] ?? 0;
+$trainingPts   = $pointsByType['training'] ?? 0;
+$examPts       = $pointsByType['exam'] ?? 0;
+$achievementPts = $pointsByType['achievement'] ?? 0;
+$totalPts       = $surveyPts + $trainingPts + $examPts + $achievementPts;
+
+// Exam records for this employee
+$examRecs = $db->prepare(
+    'SELECT exam_level, passed_date FROM exam_records WHERE employee_id = :id ORDER BY exam_level'
+);
+$examRecs->execute([':id' => $id]);
+$passedExams = $examRecs->fetchAll();
+
+// Recent points log (last 20)
+$recentLogs = $db->prepare(
+    "SELECT type, points, description, created_at
+     FROM points_log
+     WHERE employee_id = :id
+     ORDER BY created_at DESC
+     LIMIT 20"
+);
+$recentLogs->execute([':id' => $id]);
+$recentLogs = $recentLogs->fetchAll();
 
 // ---------------------------------------------------------------------------
 // Render Detail Page
@@ -113,14 +156,26 @@ ob_start();
                     <td><?php echo htmlspecialchars($departmentName, ENT_QUOTES, 'UTF-8'); ?></td>
                 </tr>
                 <tr>
-                    <td class="text-muted">入职日期</td>
-                    <td><?php echo htmlspecialchars($joinDate, ENT_QUOTES, 'UTF-8'); ?></td>
+                    <td class="text-muted">手机号</td>
+                    <td><?php echo $phone ? htmlspecialchars($phone, ENT_QUOTES, 'UTF-8') : '<span class="text-muted">未填写</span>'; ?></td>
+                </tr>
+                <tr>
+                    <td class="text-muted">邮箱</td>
+                    <td><?php echo $email ? htmlspecialchars($email, ENT_QUOTES, 'UTF-8') : '<span class="text-muted">未填写</span>'; ?></td>
                 </tr>
                 <tr>
                     <td class="text-muted">AI等级</td>
                     <td>
                         <span class="badge <?php echo aiLevelBadgeClass($aiLevel); ?> detail-badge">
                             <?php echo htmlspecialchars($aiLevel, ENT_QUOTES, 'UTF-8'); ?>
+                        </span>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="text-muted">状态</td>
+                    <td>
+                        <span class="badge <?php echo $status === '在职' ? 'badge-success' : 'badge-secondary'; ?> detail-badge">
+                            <?php echo htmlspecialchars($status, ENT_QUOTES, 'UTF-8'); ?>
                         </span>
                     </td>
                 </tr>
@@ -137,50 +192,96 @@ ob_start();
     </div>
 </div>
 
-<!-- Points Overview — 4 Placeholder Panels -->
-<h5 class="mt-4 mb-3">积分概览</h5>
+<!-- Points Overview — Real data from Phase 2 -->
+<h5 class="mt-4 mb-3">积分概览 <span class="badge badge-primary">总计 <?php echo $totalPts; ?> 分</span></h5>
 <div class="row">
     <!-- 调查积分 -->
     <div class="col-md-6 mb-3">
-        <div class="card point-panel" id="panel-survey-points">
-            <div class="card-header bg-primary text-white" style="border-left: 3px solid #2980b9;">
+        <div class="card point-panel">
+            <div class="card-header bg-primary text-white">
                 📋 调查积分
             </div>
-            <div class="card-body">数据将在后续版本上线</div>
-            <div class="card-footer text-muted small">Phase 2+ 功能</div>
+            <div class="card-body text-center">
+                <h2 class="text-primary mb-0"><?php echo $surveyPts; ?></h2>
+                <small class="text-muted">累计配合调研次数：<?php echo $surveyPts > 0 ? ($surveyPts / 0.5) : 0; ?> 次</small>
+            </div>
         </div>
     </div>
     <!-- 培训积分 -->
     <div class="col-md-6 mb-3">
-        <div class="card point-panel" id="panel-training-points">
-            <div class="card-header bg-success text-white" style="border-left: 3px solid #219a52;">
+        <div class="card point-panel">
+            <div class="card-header bg-success text-white">
                 📚 培训积分
             </div>
-            <div class="card-body">数据将在后续版本上线</div>
-            <div class="card-footer text-muted small">Phase 2+ 功能</div>
+            <div class="card-body text-center">
+                <h2 class="text-success mb-0"><?php echo $trainingPts; ?></h2>
+                <small class="text-muted">参加培训并获得积分</small>
+            </div>
         </div>
     </div>
     <!-- 考核积分 -->
     <div class="col-md-6 mb-3">
-        <div class="card point-panel" id="panel-exam-points">
-            <div class="card-header bg-warning text-dark" style="border-left: 3px solid #d68910;">
+        <div class="card point-panel">
+            <div class="card-header bg-warning text-dark">
                 📝 考核积分
             </div>
-            <div class="card-body">数据将在后续版本上线</div>
-            <div class="card-footer text-muted small">Phase 2+ 功能</div>
+            <div class="card-body text-center">
+                <h2 class="text-warning mb-0"><?php echo $examPts; ?></h2>
+                <small class="text-muted">
+                    <?php if (!empty($passedExams)): ?>
+                    已通过：<?php echo implode(', ', array_column($passedExams, 'exam_level')); ?>
+                    <?php else: ?>
+                    未参加考试
+                    <?php endif; ?>
+                </small>
+            </div>
         </div>
     </div>
     <!-- 成就积分 -->
     <div class="col-md-6 mb-3">
-        <div class="card point-panel" id="panel-achievement-points">
-            <div class="card-header bg-danger text-white" style="border-left: 3px solid #c0392b;">
+        <div class="card point-panel">
+            <div class="card-header bg-danger text-white">
                 🏆 成就积分
             </div>
-            <div class="card-body">数据将在后续版本上线</div>
-            <div class="card-footer text-muted small">Phase 2+ 功能</div>
+            <div class="card-body text-center">
+                <h2 class="text-danger mb-0"><?php echo $achievementPts; ?></h2>
+                <small class="text-muted">数据将在后续版本上线</small>
+            </div>
         </div>
     </div>
 </div>
-<?php
+
+<!-- Recent Points Log -->
+<?php if (!empty($recentLogs)): ?>
+<h5 class="mt-4 mb-3">积分明细（最近20条）</h5>
+<div class="table-responsive">
+    <table class="table table-sm table-striped">
+        <thead>
+            <tr>
+                <th>类型</th>
+                <th>分值</th>
+                <th>说明</th>
+                <th>时间</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php
+            $typeLabels = ['survey' => '调查', 'training' => '培训', 'exam' => '考核', 'achievement' => '成就'];
+            $typeBadges = ['survey' => 'info', 'training' => 'success', 'exam' => 'warning', 'achievement' => 'danger'];
+            foreach ($recentLogs as $log):
+                $label = $typeLabels[$log['type']] ?? $log['type'];
+                $badge = $typeBadges[$log['type']] ?? 'secondary';
+            ?>
+            <tr>
+                <td><span class="badge badge-<?php echo $badge; ?>"><?php echo $label; ?></span></td>
+                <td><strong>+<?php echo $log['points']; ?></strong></td>
+                <td><?php echo htmlspecialchars($log['description'], ENT_QUOTES, 'UTF-8'); ?></td>
+                <td><small><?php echo $log['created_at']; ?></small></td>
+            </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+</div>
+<?php endif; ?>
 $content = ob_get_clean();
 renderLayout($name . ' - 员工详情', 'employees', $content);

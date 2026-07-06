@@ -1,0 +1,6 @@
+.planning/
+.workbuddy/
+/build/output/
+/releases/
+*.exe
+NUL
