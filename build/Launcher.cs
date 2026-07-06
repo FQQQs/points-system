@@ -9,7 +9,6 @@ using System.Drawing;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading;
 using System.Windows.Forms;
 
@@ -23,6 +22,7 @@ namespace PointsSystemLauncher
         private static int _port = 8899;
         private static bool _isExiting = false;
         private static Mutex _mutex = null;
+        private static System.Timers.Timer _healthTimer = null;
 
         [STAThread]
         static void Main(string[] args)
@@ -75,6 +75,9 @@ namespace PointsSystemLauncher
             // Setup system tray icon
             SetupTrayIcon();
 
+            // Start health check timer (ping PHP every 30s)
+            StartHealthCheck();
+
             // Run message loop
             Application.Run();
         }
@@ -108,10 +111,8 @@ namespace PointsSystemLauncher
                 psi.UseShellExecute = false;
                 psi.CreateNoWindow = true;
                 psi.WindowStyle = ProcessWindowStyle.Hidden;
-                psi.RedirectStandardOutput = true;
-                psi.RedirectStandardError = true;
-                psi.StandardOutputEncoding = Encoding.UTF8;
-                psi.StandardErrorEncoding = Encoding.UTF8;
+                // Do NOT redirect stdout/stderr — PHP built-in server logs to stderr
+                // per-request, and a full buffer would BLOCK PHP, freezing the app.
 
                 _phpProcess = new Process();
                 _phpProcess.StartInfo = psi;
@@ -220,6 +221,14 @@ namespace PointsSystemLauncher
 
         private static void Cleanup()
         {
+            // Stop health check timer
+            if (_healthTimer != null)
+            {
+                _healthTimer.Stop();
+                _healthTimer.Dispose();
+                _healthTimer = null;
+            }
+
             KillPhpProcess();
             
             if (_trayIcon != null)
@@ -281,6 +290,49 @@ namespace PointsSystemLauncher
             {
                 return true;
             }
+        }
+
+        private static void StartHealthCheck()
+        {
+            _healthTimer = new System.Timers.Timer(30000); // every 30 seconds
+            _healthTimer.Elapsed += (sender, e) =>
+            {
+                if (_isExiting) return;
+
+                bool alive = false;
+                try
+                {
+                    System.Net.HttpWebRequest req = (System.Net.HttpWebRequest)System.Net.WebRequest.Create(
+                        string.Format("http://127.0.0.1:{0}/dashboard.php", _port));
+                    req.Method = "HEAD";
+                    req.Timeout = 5000;
+                    using (var resp = (System.Net.HttpWebResponse)req.GetResponse())
+                    {
+                        alive = (resp.StatusCode == System.Net.HttpStatusCode.OK);
+                    }
+                }
+                catch { }
+
+                if (!alive)
+                {
+                    // PHP is down, try to restart
+                    KillPhpProcess();
+                    Thread.Sleep(1000);
+                    if (!_isExiting)
+                    {
+                        StartPhpServer();
+                        // Show balloon notification
+                        if (_trayIcon != null)
+                        {
+                            _trayIcon.ShowBalloonTip(3000, "Server Restarted",
+                                "PHP server was down and has been restarted.",
+                                ToolTipIcon.Info);
+                        }
+                    }
+                }
+            };
+            _healthTimer.AutoReset = true;
+            _healthTimer.Start();
         }
 
         private static Icon CreateAppIcon()
