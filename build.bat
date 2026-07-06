@@ -65,16 +65,17 @@ set "CSC_PATH=C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
 set "LAUNCHER_CS=%BUILD_DIR%\Launcher.cs"
 set "LAUNCHER_EXE=%BUILD_DIR%\Launcher.exe"
 
-if not exist "!LAUNCHER_EXE!" (
-    echo [INFO] Compiling Launcher.cs...
-    powershell.exe -Command "& '!CSC_PATH!' /nologo /target:winexe /out:'!LAUNCHER_EXE!' /reference:'System.Windows.Forms.dll' /reference:'System.Drawing.dll' '!LAUNCHER_CS!'" 2>&1
-    if !ERRORLEVEL! neq 0 (
-        echo [WARN] Launcher compilation failed! Using start.bat instead.
-    ) else (
-        echo [INFO] Launcher.exe compiled successfully
-    )
+echo [INFO] Compiling Launcher.cs...
+powershell.exe -Command "& '!CSC_PATH!' /nologo /target:winexe /out:'!LAUNCHER_EXE!' /reference:'System.Windows.Forms.dll' /reference:'System.Drawing.dll' '!LAUNCHER_CS!'" 2>&1
+if !ERRORLEVEL! neq 0 (
+    echo [WARN] Launcher compilation failed! Using start.bat instead.
 ) else (
-    echo [INFO] Launcher.exe already exists, skipping compilation
+    echo [INFO] Launcher.exe compiled successfully
+    :: Copy Launcher.exe to project root for development use
+    copy /Y "!LAUNCHER_EXE!" "%PROJECT_ROOT%\Launcher.exe" >nul
+    if !ERRORLEVEL! equ 0 (
+        echo [INFO] Launcher.exe copied to project root
+    )
 )
 
 :: Step 1: Prepare build files

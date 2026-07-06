@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- 背景渐变 -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#E53935;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#D32F2F;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#B71C1C;stop-opacity:1" />
+    </linearGradient>
+    <!-- 金色渐变 -->
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFD54F;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#FFB300;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#FF8F00;stop-opacity:1" />
+    </linearGradient>
+    <!-- 米粒渐变 -->
+    <linearGradient id="riceGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#F5F5F5;stop-opacity:1" />
+    </linearGradient>
+    <!-- 阴影 -->
+    <filter id="shadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#00000033"/>
+    </filter>
+    <filter id="innerGlow">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="3" result="blur"/>
+      <feOffset dx="0" dy="-2" result="offsetBlur"/>
+      <feComposite in="SourceGraphic" in2="offsetBlur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- 外圈金色圆环 -->
+  <circle cx="256" cy="256" r="248" fill="none" stroke="url(#goldGrad)" stroke-width="16" filter="url(#shadow)"/>
+
+  <!-- 红色主背景 -->
+  <circle cx="256" cy="256" r="230" fill="url(#bgGrad)"/>
+
+  <!-- 内圈装饰线 -->
+  <circle cx="256" cy="256" r="210" fill="none" stroke="#FFFFFF" stroke-opacity="0.15" stroke-width="2"/>
+  <circle cx="256" cy="256" r="180" fill="none" stroke="#FFFFFF" stroke-opacity="0.10" stroke-width="1"/>
+
+  <!-- 寿司米饭碗 - 外碗 -->
+  <ellipse cx="256" cy="290" rx="128" ry="100" fill="url(#riceGrad)" opacity="0.95" filter="url(#shadow)"/>
+  
+  <!-- 碗内阴影 -->
+  <ellipse cx="256" cy="285" rx="118" ry="90" fill="#EEEEEE"/>
+
+  <!-- 米饭粒 (多个白色椭圆) -->
+  <ellipse cx="210" cy="270" rx="16" ry="10" fill="white" transform="rotate(-15 210 270)"/>
+  <ellipse cx="240" cy="260" rx="15" ry="9" fill="white" transform="rotate(10 240 260)"/>
+  <ellipse cx="270" cy="265" rx="14" ry="9" fill="white" transform="rotate(-8 270 265)"/>
+  <ellipse cx="300" cy="272" rx="16" ry="10" fill="white" transform="rotate(20 300 272)"/>
+  <ellipse cx="225" cy="288" rx="13" ry="8" fill="white" transform="rotate(5 225 288)"/>
+  <ellipse cx="255" cy="282" rx="14" ry="9" fill="white" transform="rotate(-12 255 282)"/>
+  <ellipse cx="285" cy="286" rx="13" ry="8" fill="white" transform="rotate(8 285 286)"/>
+  <ellipse cx="240" cy="300" rx="12" ry="7" fill="white" transform="rotate(-5 240 300)"/>
+  <ellipse cx="268" cy="298" rx="13" ry="8" fill="white" transform="rotate(15 268 298)"/>
+  <ellipse cx="220" cy="310" rx="11" ry="7" fill="white" transform="rotate(-20 220 310)"/>
+  <ellipse cx="290" cy="305" rx="12" ry="7" fill="white" transform="rotate(10 290 305)"/>
+  <ellipse cx="255" cy="315" rx="11" ry="7" fill="white" transform="rotate(-3 255 315)"/>
+
+  <!-- 三文鱼片 -->
+  <ellipse cx="256" cy="285" rx="55" ry="35" fill="#F48FB1" opacity="0.9"/>
+  <!-- 脂肪纹路 -->
+  <path d="M215 280 Q240 275 256 280 Q272 285 297 280" fill="none" stroke="#F8BBD0" stroke-width="2.5" opacity="0.8"/>
+  <path d="M220 292 Q245 287 256 290 Q267 293 290 290" fill="none" stroke="#F8BBD0" stroke-width="2" opacity="0.7"/>
+
+  <!-- 海苔带 -->
+  <rect x="185" y="260" width="142" height="6" rx="3" fill="#2E2E2E" transform="rotate(-3 256 260)" opacity="0.85"/>
+  <rect x="188" y="300" width="136" height="5" rx="2.5" fill="#2E2E2E" transform="rotate(2 256 300)" opacity="0.85"/>
+
+  <!-- 顶部的金色星星（积分符号） -->
+  <g filter="url(#shadow)">
+    <!-- 星形 -->
+    <polygon points="256,110 266,140 298,143 272,163 279,195 256,177 233,195 240,163 214,143 246,140" 
+             fill="url(#goldGrad)"/>
+    <!-- 星星上方的光晕 -->
+    <polygon points="256,105 258,112 265,113 260,118 262,125 256,121 250,125 252,118 247,113 254,112" 
+             fill="#FFF9C4" opacity="0.6"/>
+  </g>
+
+  <!-- 星星右侧小星星（装饰） -->
+  <polygon points="340,170 343,178 352,179 345,184 347,193 340,188 333,193 335,184 328,179 337,178" 
+           fill="#FFD54F" opacity="0.4" transform="scale(0.6) translate(235, 60)"/>
+
+  <!-- 底部文字：CJ (苍井) -->
+  <text x="256" y="395" font-family="Georgia, 'Times New Roman', serif" font-size="48" 
+        font-weight="bold" fill="white" text-anchor="middle" letter-spacing="6" opacity="0.95">CJ</text>
+
+  <!-- 底部小字：POINTS -->
+  <text x="256" y="418" font-family="Arial, sans-serif" font-size="14" font-weight="600" 
+        fill="#FFD54F" text-anchor="middle" letter-spacing="8" opacity="0.9">POINTS</text>
+
+  <!-- 顶部小装饰点 -->
+  <circle cx="160" cy="170" r="3" fill="white" opacity="0.3"/>
+  <circle cx="352" cy="170" r="3" fill="white" opacity="0.3"/>
+  <circle cx="140" cy="200" r="2" fill="white" opacity="0.2"/>
+  <circle cx="372" cy="200" r="2" fill="white" opacity="0.2"/>
+
+  <!-- 底部的樱花装饰 -->
+  <g transform="translate(120, 350) scale(0.5)" opacity="0.3">
+    <circle cx="0" cy="0" r="15" fill="#FFCDD2"/>
+    <circle cx="0" cy="-10" r="8" fill="#FFCDD2"/>
+    <circle cx="9" cy="-5" r="8" fill="#FFCDD2"/>
+    <circle cx="5" cy="8" r="8" fill="#FFCDD2"/>
+    <circle cx="-9" cy="5" r="8" fill="#FFCDD2"/>
+    <circle cx="-9" cy="-5" r="8" fill="#FFCDD2"/>
+    <circle cx="0" cy="0" r="4" fill="#F48FB1"/>
+  </g>
+  <g transform="translate(392, 350) scale(0.5)" opacity="0.3">
+    <circle cx="0" cy="0" r="15" fill="#FFCDD2"/>
+    <circle cx="0" cy="-10" r="8" fill="#FFCDD2"/>
+    <circle cx="9" cy="-5" r="8" fill="#FFCDD2"/>
+    <circle cx="5" cy="8" r="8" fill="#FFCDD2"/>
+    <circle cx="-9" cy="5" r="8" fill="#FFCDD2"/>
+    <circle cx="-9" cy="-5" r="8" fill="#FFCDD2"/>
+    <circle cx="0" cy="0" r="4" fill="#F48FB1"/>
+  </g>
+</svg>

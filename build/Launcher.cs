@@ -104,7 +104,7 @@ namespace PointsSystemLauncher
             {
                 ProcessStartInfo psi = new ProcessStartInfo();
                 psi.FileName = phpExe;
-                psi.Arguments = string.Format("-S localhost:{0} -t \"{1}\"", _port, _appDir);
+                psi.Arguments = string.Format("-S 127.0.0.1:{0} -t \"{1}\"", _port, _appDir);
                 psi.UseShellExecute = false;
                 psi.CreateNoWindow = true;
                 psi.WindowStyle = ProcessWindowStyle.Hidden;
@@ -155,7 +155,7 @@ namespace PointsSystemLauncher
                 // Fallback: use default icon
             }
 
-            _trayIcon.Text = string.Format("CangJingSushi Points System\nRunning - http://localhost:{0}", _port);
+            _trayIcon.Text = string.Format("CangJingSushi Points System\nRunning - http://127.0.0.1:{0}", _port);
             _trayIcon.Visible = true;
 
             // Context menu
@@ -186,7 +186,7 @@ namespace PointsSystemLauncher
 
         private static void OpenBrowser()
         {
-            string url = string.Format("http://localhost:{0}/dashboard.php", _port);
+            string url = string.Format("http://127.0.0.1:{0}/dashboard.php", _port);
             try
             {
                 Process.Start(url);
@@ -285,14 +285,68 @@ namespace PointsSystemLauncher
 
         private static Icon CreateAppIcon()
         {
-            // Create a simple icon (green dot)
-            Bitmap bmp = new Bitmap(16, 16);
+            // Create a beautiful icon matching the logo design
+            // Use a larger size for better quality on high-DPI displays
+            Bitmap bmp = new Bitmap(64, 64);
             Graphics g = Graphics.FromImage(bmp);
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
             g.Clear(Color.Transparent);
-            Brush brush = new SolidBrush(Color.FromArgb(0, 153, 76));
-            g.FillEllipse(brush, 1, 1, 14, 14);
+
+            // Gold outer ring
+            using (Pen goldPen = new Pen(Color.FromArgb(255, 200, 150, 50), 3))
+            {
+                g.DrawEllipse(goldPen, 2, 2, 58, 58);
+            }
+
+            // Red background circle
+            using (Brush redBrush = new SolidBrush(Color.FromArgb(255, 180, 30, 30)))
+            {
+                g.FillEllipse(redBrush, 5, 5, 52, 52);
+            }
+
+            // Rice bowl (white ellipse)
+            using (Brush riceBrush = new SolidBrush(Color.FromArgb(255, 245, 245, 245)))
+            {
+                g.FillEllipse(riceBrush, 12, 28, 38, 28);
+            }
+            using (Pen bowlPen = new Pen(Color.FromArgb(255, 220, 220, 220), 1))
+            {
+                g.DrawEllipse(bowlPen, 12, 28, 38, 28);
+            }
+
+            // Salmon slice (pink)
+            using (Brush salmonBrush = new SolidBrush(Color.FromArgb(220, 230, 130, 145)))
+            {
+                g.FillEllipse(salmonBrush, 18, 32, 26, 16);
+            }
+
+            // Gold star on top
+            PointF[] star = new PointF[10];
+            double cx = 31, cy = 18;
+            for (int i = 0; i < 10; i++)
+            {
+                double angle = Math.PI * (i * 36 - 90) / 180;
+                double r = (i % 2 == 0) ? 12 : 5;
+                star[i] = new PointF((float)(cx + r * Math.Cos(angle)), (float)(cy + r * Math.Sin(angle)));
+            }
+            using (Brush starBrush = new SolidBrush(Color.FromArgb(255, 255, 200, 50)))
+            {
+                g.FillPolygon(starBrush, star);
+            }
+            using (Pen starPen = new Pen(Color.FromArgb(255, 220, 160, 20), 1))
+            {
+                g.DrawPolygon(starPen, star);
+            }
+
+            // Small highlight on star
+            using (Brush hlBrush = new SolidBrush(Color.FromArgb(100, 255, 255, 200)))
+            {
+                g.FillEllipse(hlBrush, 26, 13, 10, 6);
+            }
+
             g.Dispose();
-            brush.Dispose();
+
+            // Create icon from bitmap
             IntPtr hIcon = bmp.GetHicon();
             Icon icon = Icon.FromHandle(hIcon);
             bmp.Dispose();
