@@ -410,6 +410,25 @@ function initSchema(PDO $pdo): void
         UNIQUE(employee_id, exam_level)
     )');
 
+    // Achievement applications (Phase 3)
+    $pdo->exec('CREATE TABLE IF NOT EXISTS achievement_applications (
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        employee_id     INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+        description     TEXT    NOT NULL,
+        quantitative    TEXT    DEFAULT \'\',
+        dim_saving      INTEGER NOT NULL DEFAULT 0 CHECK(dim_saving BETWEEN 0 AND 3),
+        dim_impact      INTEGER NOT NULL DEFAULT 0 CHECK(dim_impact BETWEEN 0 AND 4),
+        dim_replicate   INTEGER NOT NULL DEFAULT 0 CHECK(dim_replicate BETWEEN 0 AND 3),
+        total_score     REAL    NOT NULL DEFAULT 0,
+        status          TEXT    NOT NULL DEFAULT \'pending\' CHECK(status IN (\'pending\',\'approved\',\'rejected\')),
+        review_comment  TEXT    DEFAULT \'\',
+        attachment      TEXT    DEFAULT \'\',
+        operator        TEXT    NOT NULL DEFAULT \'FDE工程师\',
+        created_at      TEXT    NOT NULL DEFAULT (datetime(\'now\',\'localtime\')),
+        reviewed_at     TEXT    DEFAULT NULL,
+        updated_at      TEXT    DEFAULT NULL
+    )');
+
     // Achievement edit logs (Phase 3)
     $pdo->exec('CREATE TABLE IF NOT EXISTS achievement_edit_logs (
         id               INTEGER PRIMARY KEY AUTOINCREMENT,
